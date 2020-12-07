@@ -4,7 +4,7 @@ A client to gather Autopilot information and send them to the [Autopilot-Manager
 
 ## Prerequisites
 
-Requires the .NET Framework 4.6.
+Requires the .NET Framework 4.6. The .NET version 4.6 is used explicitly, as it defines the lowset common .NET version for Windows 10. Even the first Windows 10 versions are coming with .NET Framework 4.6. So we do not introduce any dependency here.
 
 ## Usage
 
