@@ -1,6 +1,6 @@
 # Autopilot-Manager-Client
 
-A client to gather Autopilot information and send them to the [Autopilot-Manager](https://github.com/okieselbach/Autopilot-Manager).
+A small client to gather Autopilot information and send them to the [Autopilot-Manager](https://github.com/okieselbach/Autopilot-Manager).
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ Simply starting the program during OOBE [Shift] + [F10] and providing the Autopi
 
 ## License
 
-Autopilot-Manager-Client is available under the [GPL](LICENSE).
+Autopilot-Manager-Client is available as open source under the [GPL](LICENSE).
 
 Autopilot-Manager-Client contains code from:
 * Raffael Herrmann (see https://github.com/codebude/QRCoder), which is available under the [MIT](https://licenses.nuget.org/MIT) license.
