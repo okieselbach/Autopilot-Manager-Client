@@ -1,6 +1,10 @@
 # Autopilot-Manager-Client
 
-A small client to gather Autopilot information and send them to the [Autopilot-Manager](https://github.com/okieselbach/Autopilot-Manager).
+A small client to gather Autopilot information during OOBE via [Shift] + [F10] and send them to the [Autopilot-Manager](https://github.com/okieselbach/Autopilot-Manager) for approval workflow.
+
+<img src="https://oliverkieselbach.files.wordpress.com/2020/12/image-16.png"/>
+
+<img src="https://oliverkieselbach.files.wordpress.com/2020/12/image-26.png"/>
 
 ## Prerequisites
 
