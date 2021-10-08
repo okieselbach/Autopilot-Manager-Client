@@ -58,13 +58,31 @@ namespace AutopilotManager.Services
                 MessageReceived(this, new MessageReceivedEventArgs { Message = "Serial number fetched" });
             }
 
+            string model = string.Empty;
             var systemInformationQuery = new ObjectQuery("SELECT * FROM Win32_ComputerSystem");
             var systemInformationSearcher = new ManagementObjectSearcher(scope, systemInformationQuery);
             var systemInformationQueryCollection = systemInformationSearcher.Get();
             foreach (var entry in systemInformationQueryCollection)
             {
                 var manufacturer = entry["Manufacturer"].ToString();
-                var model = entry["Model"].ToString();
+                if (manufacturer.ToLower().Contains("lenovo"))
+                {
+                    var lenovoSystemInformationQuery = new ObjectQuery("SELECT * FROM Win32_ComputerSystemProduct");
+                    var lenovoSystemInformationSearcher = new ManagementObjectSearcher(scope, lenovoSystemInformationQuery);
+                    var lenovoSystemInformationQueryCollection = lenovoSystemInformationSearcher.Get();
+                    foreach (var systemEntry in lenovoSystemInformationQueryCollection)
+                    {
+                        model = systemEntry["Version"].ToString();
+                        break;
+                    }
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(model))
+                    { 
+                        model = entry["Model"].ToString(); 
+                    }
+                }
                 information.Manufacturer = manufacturer;
                 information.Model = model;
                 MessageReceived(this, new MessageReceivedEventArgs { Message = "Device make and model fetched" });
