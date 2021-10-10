@@ -38,7 +38,7 @@ namespace AutopilotManager.Services
                 var version = entry["Version"].ToString();
                 if (version.StartsWith("10."))
                 {
-                    MessageReceived(this, new MessageReceivedEventArgs { Message = "OS version fetched" });
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"OS version [{version}] fetched" });
                 }
                 else
                 {
@@ -55,7 +55,7 @@ namespace AutopilotManager.Services
             {
                 var serialNumber = entry["SerialNumber"].ToString();
                 information.SerialNumber = serialNumber;
-                MessageReceived(this, new MessageReceivedEventArgs { Message = "Serial number fetched" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Serial number [{serialNumber}] fetched" });
             }
 
             string model = string.Empty;
@@ -78,30 +78,34 @@ namespace AutopilotManager.Services
                 }
                 else
                 {
-                    if (!string.IsNullOrEmpty(model))
-                    { 
-                        model = entry["Model"].ToString(); 
-                    }
+                    model = entry["Model"].ToString(); 
                 }
                 information.Manufacturer = manufacturer;
                 information.Model = model;
-                MessageReceived(this, new MessageReceivedEventArgs { Message = "Device make and model fetched" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Device manufacturer [{manufacturer}] and model [{model}] fetched" });
             }
 
-            scope.Path = new ManagementPath(@"\\localhost\root\cimv2\mdm\dmmap");
-            scope.Connect();
-            var hardwareHashQuery = new ObjectQuery("SELECT * FROM MDM_DevDetail_Ext01 WHERE InstanceID='Ext' AND ParentID='./DevDetail'");
-            var hardwareHashSearcher = new ManagementObjectSearcher(scope, hardwareHashQuery);
-            var hardwareHashQueryCollection = hardwareHashSearcher.Get();
-            if (hardwareHashQueryCollection.Count < 1)
+            try
             {
-                MessageReceived(this, new MessageReceivedEventArgs { Message = "Device hash not found!" });
+                scope.Path = new ManagementPath(@"\\localhost\root\cimv2\mdm\dmmap");
+                scope.Connect();
+                var hardwareHashQuery = new ObjectQuery("SELECT * FROM MDM_DevDetail_Ext01 WHERE InstanceID='Ext' AND ParentID='./DevDetail'");
+                var hardwareHashSearcher = new ManagementObjectSearcher(scope, hardwareHashQuery);
+                var hardwareHashQueryCollection = hardwareHashSearcher.Get();
+                if (hardwareHashQueryCollection.Count < 1)
+                {
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = "Device hash not found!" });
+                }
+                foreach (var entry in hardwareHashQueryCollection)
+                {
+                    var hardwareHash = entry["DeviceHardwareData"].ToString();
+                    information.HardwareHash = hardwareHash;
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"Device hash [{hardwareHash.Substring(0, 5)}...] fetched" });
+                }
             }
-            foreach (var entry in hardwareHashQueryCollection)
+            catch (ManagementException ex)
             {
-                var hardwareHash = entry["DeviceHardwareData"].ToString();
-                information.HardwareHash = hardwareHash;
-                MessageReceived(this, new MessageReceivedEventArgs { Message = "Device hash fetched" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"DeviceHardwareData: {ex.Message}(probably not running as system)" });
             }
 
             return information;           

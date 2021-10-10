@@ -33,6 +33,7 @@ namespace AutopilotManager.Client
         private static bool _endpointsValidationResult = true;
         private static bool _endpointsValidationOnly = false;
         private static bool _ignoreAutopilotAssignment = false;
+        private static bool _fetchHardwareDataOnly = false;
 
         // ap.exe should be called from OOBE [Shift] + [F10] command prompt via:
 
@@ -121,24 +122,13 @@ namespace AutopilotManager.Client
                     }
                 }
 
-                // check if our backend server is reachable
-                if (!_backendClient.IsValidUrl(_backendUrl, out _backendUrl, "HEAD"))
-                {
-                    _logger.WriteInfo("Backend URL not reachable");
-                    return;
-                }
-                else
-                {
-                    _logger.WriteDebug($"Resolved backend URL is {_backendUrl}");
-                }
-
                 // main work start now
                 _logger.WriteInfo("Fetching system information");
                 _systemInformation = _windowsAutopilotHashService.FetchData();
 
                 if (_systemInformation == null)
                 {
-                    _logger.WriteInfo("Not a Windows 10 operating system, can't fetch data");
+                    _logger.WriteInfo("No Windows 10/11 operating system, can't fetch data");
                     return;
                 }
 
@@ -149,6 +139,21 @@ namespace AutopilotManager.Client
                 else
                 {
                     _logger.WriteInfo("Information successfully fetched");
+                    if (_fetchHardwareDataOnly)
+                    {
+                        return;
+                    }
+
+                    // check if our backend server is reachable
+                    if (!_backendClient.IsValidUrl(_backendUrl, out _backendUrl, "HEAD"))
+                    {
+                        _logger.WriteInfo("Backend URL not reachable");
+                        return;
+                    }
+                    else
+                    {
+                        _logger.WriteDebug($"Resolved backend URL is {_backendUrl}");
+                    }
 
                     // Safe the info to app service AutopilotManager... result here may be 'not allowed', catched in ResultReceived handler
                     await _backendClient.SaveDataAsync(_systemInformation, _backendUrl);
@@ -229,11 +234,15 @@ namespace AutopilotManager.Client
                                 _ignoreAutopilotAssignment = true;
                                 _logger.WriteDebug($"Ignoring current Autopilot assignment and proceeding");
                                 break;
+                            case "f":
+                                _fetchHardwareDataOnly = true;
+                                _logger.WriteDebug($"Fetch hardware data only");
+                                break;
                             case "?":
                             case "h":
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo($"AutopilotManager.Client v{Assembly.GetExecutingAssembly().GetName().Version.ToString(2)}");
-                                _logger.WriteInfo($"2020 by Oliver Kieselbach (oliverkieselbach.com)");
+                                _logger.WriteInfo($"2021 by Oliver Kieselbach (oliverkieselbach.com)");
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo($"USAGE: {Assembly.GetExecutingAssembly().GetName().Name} <URL> [options...]");
                                 _logger.WriteInfo("");
@@ -245,6 +254,7 @@ namespace AutopilotManager.Client
                                 _logger.WriteInfo($"-s, --skip, /s, /skip         skip endpoint enrollment verification");
                                 _logger.WriteInfo($"-c, --connect, /c, /connect   endpoint enrollment verification only");
                                 _logger.WriteInfo($"-i, --ignore, /i, /ignore     ignore current Autopilot assignment and proceed");
+                                _logger.WriteInfo($"-f, --fetch, /f, /fetch       fetch only hardware data, no result is send");
                                 Environment.Exit(0);
                                 break;
                             default:

@@ -45,10 +45,13 @@ namespace AutopilotManager.Clients
                 { "fe2cr.update.microsoft.com", 443 }, //OOBE-ZDP
                 { "euprodimedatapri.azureedge.net", 443 }, // Europe
                 { "euprodimedatasec.azureedge.net", 443 }, // Europe
+                { "euprodimedatahotfix.azureedge.net", 443 }, // Europe
                 //{ "naprodimedatapri.azureedge.net", 443 }, // North America
                 //{ "naprodimedatasec.azureedge.net", 443 }, // North America
+                //{ "naprodimedatahotfix.azureedge.net", 443 }. // North America
                 //{ "approdimedatapri.azureedge.net", 443 }, // Asia Pacific
                 //{ "approdimedatasec.azureedge.net", 443 }  // Asia Pacific
+                //{ "approdimedatahotfix.azureedge.net", 443 }. // Asia Pacific
 
                 // tokenprovider.termsofuse.identitygovernance.azure.com
                 // wdcp.microsoft.com
@@ -154,6 +157,7 @@ namespace AutopilotManager.Clients
                     // treat the check as failed if more than 15 minutes off, as this might result in certificate validation problems.
                     if (minutesDiff > 15)
                     {
+                        MessageReceived(this, new MessageReceivedEventArgs { Message = $"=> Time difference is more than {minutesDiff} minutes -> fail, please correct system time!" });
                         endpointValidationResult = false;
                     }
                 }
