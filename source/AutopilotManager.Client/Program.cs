@@ -34,6 +34,7 @@ namespace AutopilotManager.Client
         private static bool _endpointsValidationOnly = false;
         private static bool _ignoreAutopilotAssignment = false;
         private static bool _fetchHardwareDataOnly = false;
+        private static bool _deleteManagedDeviceOnly = false;
 
         // ap.exe should be called from OOBE [Shift] + [F10] command prompt via:
 
@@ -56,67 +57,81 @@ namespace AutopilotManager.Client
 
             try
             {
-                // --skip endpoint validation found
-                if (!_skipEndpointsValidation)
+                // default Action is IMPORT
+                var action = "IMPORT";
+
+                // --erase device deletion request found
+                if (_deleteManagedDeviceOnly)
                 {
-                    var endpointVerificationError = false;
-                    if (_endpointsValidationResult = await _backendClient.VerifyEnrollmentEndpoints())
+                    _logger.WriteInfo("Identified as device [DELETE] request");
+                    action = "DELETE";
+                }
+                else
+                {
+                    _logger.WriteInfo("Identified as device [IMPORT] request");
+
+                    // --skip endpoint validation found
+                    if (!_skipEndpointsValidation)
                     {
-                        _logger.WriteInfo("All enrollment URLs reachable");
-                    }
-                    else
-                    {
-                        if (!_logger.DebugMode)
+                        var endpointVerificationError = false;
+                        if (_endpointsValidationResult = await _backendClient.VerifyEnrollmentEndpoints())
                         {
-                            _logger.WriteInfo("Not all enrollment URLs reachable or system time is wrong!");
-                            _logger.WriteInfo($"Use '{Assembly.GetExecutingAssembly().GetName().Name} --connect --verbose' for connectivity test details.");
-                            endpointVerificationError = true;
+                            _logger.WriteInfo("All enrollment URLs reachable");
                         }
                         else
                         {
-                            _logger.WriteInfo("=> Not all enrollment URLs reachable or system time is wrong!");
-                            endpointVerificationError = true;
-                        }
-                    }
-                    // --connect endpoint validation only found
-                    if (_endpointsValidationOnly)
-                    {
-                        if (endpointVerificationError)
-                        {
-                            Environment.Exit(1);
-                        }
-                        return;
-                    }
-                }
-
-                // --ignore Autopilot assignment found
-                if (!_ignoreAutopilotAssignment)
-                {
-                    // is this already a Autopilot device?
-                    var rkbase = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
-                    using (RegistryKey key = rkbase.OpenSubKey(@"SOFTWARE\Microsoft\Provisioning\Diagnostics\AutoPilot"))
-                    {
-                        if (key != null)
-                        {
-                            var tenantId = key.GetValue("CloudAssignedTenantId").ToString();
-                            if (!string.IsNullOrEmpty(tenantId))
+                            if (!_logger.DebugMode)
                             {
-                                _logger.WriteInfo("Device is already Autopilot provisioned");
-                                _logger.WriteDebug($"CloudAssignedTenantId: {tenantId}");
+                                _logger.WriteInfo("Not all enrollment URLs reachable or system time is wrong!");
+                                _logger.WriteInfo($"Use '{Assembly.GetExecutingAssembly().GetName().Name} --connect --verbose' for connectivity test details.");
+                                endpointVerificationError = true;
+                            }
+                            else
+                            {
+                                _logger.WriteInfo("=> Not all enrollment URLs reachable or system time is wrong!");
+                                endpointVerificationError = true;
+                            }
+                        }
+                        // --connect endpoint validation only found
+                        if (_endpointsValidationOnly)
+                        {
+                            if (endpointVerificationError)
+                            {
+                                Environment.Exit(1);
+                            }
+                            return;
+                        }
+                    }
 
-                                var tenantDomain = key.GetValue("CloudAssignedTenantDomain").ToString();
-                                if (!string.IsNullOrEmpty(tenantDomain))
+                    // --ignore Autopilot assignment found
+                    if (!_ignoreAutopilotAssignment)
+                    {
+                        // is this already a Autopilot device?
+                        var rkbase = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+                        using (RegistryKey key = rkbase.OpenSubKey(@"SOFTWARE\Microsoft\Provisioning\Diagnostics\AutoPilot"))
+                        {
+                            if (key != null)
+                            {
+                                var tenantId = key.GetValue("CloudAssignedTenantId").ToString();
+                                if (!string.IsNullOrEmpty(tenantId))
                                 {
-                                    if (_logger.DebugMode)
+                                    _logger.WriteInfo("Device is already Autopilot provisioned");
+                                    _logger.WriteDebug($"CloudAssignedTenantId: {tenantId}");
+
+                                    var tenantDomain = key.GetValue("CloudAssignedTenantDomain").ToString();
+                                    if (!string.IsNullOrEmpty(tenantDomain))
                                     {
-                                        _logger.WriteDebug($"CloudAssignedTenantDomain: {tenantDomain}");
+                                        if (_logger.DebugMode)
+                                        {
+                                            _logger.WriteDebug($"CloudAssignedTenantDomain: {tenantDomain}");
+                                        }
+                                        else
+                                        {
+                                            _logger.WriteInfo($"Assigned tenant domain: {tenantDomain}");
+                                        }
                                     }
-                                    else
-                                    {
-                                        _logger.WriteInfo($"Assigned tenant domain: {tenantDomain}");
-                                    }
+                                    return;
                                 }
-                                return;
                             }
                         }
                     }
@@ -125,6 +140,7 @@ namespace AutopilotManager.Client
                 // main work start now
                 _logger.WriteInfo("Fetching system information");
                 _systemInformation = _windowsAutopilotHashService.FetchData();
+                _systemInformation.Action = action;
 
                 if (_systemInformation == null)
                 {
@@ -238,6 +254,10 @@ namespace AutopilotManager.Client
                                 _fetchHardwareDataOnly = true;
                                 _logger.WriteDebug($"Fetch hardware data only");
                                 break;
+                            case "e":
+                                _deleteManagedDeviceOnly = true;
+                                _logger.WriteDebug($"Delete managed device only");
+                                break;
                             case "?":
                             case "h":
                                 _logger.WriteInfo("");
@@ -255,6 +275,8 @@ namespace AutopilotManager.Client
                                 _logger.WriteInfo($"-c, --connect, /c, /connect   endpoint enrollment verification only");
                                 _logger.WriteInfo($"-i, --ignore, /i, /ignore     ignore current Autopilot assignment and proceed");
                                 _logger.WriteInfo($"-f, --fetch, /f, /fetch       fetch only hardware data, no result is send");
+                                _logger.WriteInfo($"-e, --erase, /e, /erase       send delete device request, enabled server support is needed and");
+                                _logger.WriteInfo($"                              deletion requests are only processed with enabled approval mode");
                                 Environment.Exit(0);
                                 break;
                             default:

@@ -27,6 +27,9 @@ namespace AutopilotManager.Models
         [Display(Name = "Group Tag")]
         public string GroupTag { get; set; }
 
+        [Display(Name = "Action")]
+        public string Action { get; set; }
+
         public override string ToString()
         {
             return $"{Id},{GroupTag},{Manufacturer},{Model},{SerialNumber},{HardwareHash}";

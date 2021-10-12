@@ -51,6 +51,11 @@ namespace AutopilotManager.Client
             labelCancel.Visible = false;
             buttonRetry.Visible = false;
 
+            if (_systemInformation.Action == "DELETE")
+            {
+                labelRegistered.Text = "Device deleted:";
+            }
+
             if (_preCheckErrorMessage.ToLower().Contains("not allowed"))
             {
                 Bitmap qrPlaceHolderImage = new Bitmap(80, 80);
@@ -121,7 +126,14 @@ namespace AutopilotManager.Client
 
                         BackColor = Color.FromArgb(0, 117, 51);
 
-                        buttonCancel.Text = "&Reboot";
+                        if (_systemInformation.Action.StartsWith("import", StringComparison.OrdinalIgnoreCase))
+                        {
+                            buttonCancel.Text = "&Reboot";
+                        }
+                        else // Deletion request processed
+                        {
+                            buttonCancel.Text = "&Finish";
+                        }
                         buttonCancel.BackColor = Color.FromArgb(0, 92, 40);
                         
                         labelCancel.ForeColor = Color.White;
@@ -144,7 +156,14 @@ namespace AutopilotManager.Client
                 // pre-check went wrong like model/manufacturer or import failed
                 BackColor = Color.FromArgb(91, 0, 7);
 
-                buttonCancel.Text = "&Reboot";
+                if (_systemInformation.Action.StartsWith("import", StringComparison.OrdinalIgnoreCase))
+                {
+                    buttonCancel.Text = "&Reboot";
+                }
+                else // Deletion request processed
+                {
+                    buttonCancel.Text = "&Finish";
+                }
                 buttonCancel.BackColor = Color.FromArgb(119, 0, 8);
 
                 buttonRetry.BackColor = Color.FromArgb(119, 0, 8);
@@ -156,12 +175,19 @@ namespace AutopilotManager.Client
                 labelProvisioningInformation.ForeColor = Color.FromArgb(254, 197, 114);
                 if (!string.IsNullOrEmpty(_preCheckErrorMessage))
                 {
-                    labelProvisioningInformation.Text = "Your device Manufacturer or Model is not allowed to be provisioned.";
+                    if (_preCheckErrorMessage.StartsWith("delete", StringComparison.OrdinalIgnoreCase))
+                    {
+                        labelProvisioningInformation.Text = "The request is not allowed.";
+                    }
+                    else
+                    {
+                        labelProvisioningInformation.Text = "Your device Manufacturer or Model is not allowed to be provisioned.";
+                    }
                     
                 }
                 else if (!success)
                 {
-                    labelProvisioningInformation.Text = "Something went wrong, we couldn't provision your device. Contact the IT admin to troubleshoot.";
+                    labelProvisioningInformation.Text = $"Something went wrong, we couldn't {_systemInformation.Action.ToLower()} your device. Contact the IT admin to troubleshoot.";
                 }
             }
         }
@@ -211,6 +237,29 @@ namespace AutopilotManager.Client
         {
             Close();
             DialogResult = DialogResult.Retry;
+        }
+
+        private void labelSerialNumber_DoubleClick(object sender, EventArgs e)
+        {
+            if (this.WindowState == FormWindowState.Maximized)
+            {
+                this.Size = new Size(800, 500);
+                this.WindowState = FormWindowState.Normal;
+                this.FormBorderStyle = FormBorderStyle.FixedToolWindow;
+            }
+            else
+            {
+                this.WindowState = FormWindowState.Maximized;
+                this.FormBorderStyle = FormBorderStyle.None;
+            }
+        }
+
+        private void labelSerialNumber_SizeChanged(object sender, EventArgs e)
+        {
+            if (this.WindowState == FormWindowState.Maximized)
+            {
+                this.FormBorderStyle = FormBorderStyle.None;
+            }
         }
     }
 }

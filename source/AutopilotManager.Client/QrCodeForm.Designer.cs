@@ -234,6 +234,8 @@
             this.labelSerialNumber.Size = new System.Drawing.Size(102, 30);
             this.labelSerialNumber.TabIndex = 3;
             this.labelSerialNumber.Text = "Serial Number:";
+            this.labelSerialNumber.SizeChanged += new System.EventHandler(this.labelSerialNumber_SizeChanged);
+            this.labelSerialNumber.DoubleClick += new System.EventHandler(this.labelSerialNumber_DoubleClick);
             // 
             // labelEndpoints
             // 
