@@ -14,6 +14,11 @@ Requires the .NET Framework 4.6. The .NET version 4.6 is used explicitly, as it 
 
 Simply starting the program during OOBE [Shift] + [F10] and providing the Autopilot-Manager app service address as parameter.
 
+`cd %tmp%`  
+`curl -o ap.exe <YourAutopilotMangerClientDownloadUrl> & ap <YourAutopilotManagerAppServiceUrl>`
+
+Use `ap.exe -?` for displaying the available parameters.
+
 ## License
 
 Autopilot-Manager-Client is available as open source under the [GPL](LICENSE).
