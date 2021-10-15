@@ -209,7 +209,7 @@ namespace AutopilotManager.Clients
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Posting data to {backendUrl}{apiEndpoint}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Posting data to {backendUrl.TrimEnd('/')}{apiEndpoint}" });
                 MessageReceived(this, new MessageReceivedEventArgs { Message = $"Payload is {payload}" });
 
                 var httpResponseMessage = await client.PostAsync(apiEndpoint, new StringContent(payload, Encoding.UTF8, "application/json"));
@@ -256,7 +256,7 @@ namespace AutopilotManager.Clients
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Getting data from {backendUrl}{apiEndpoint}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Getting data from {backendUrl.TrimEnd('/')}{apiEndpoint}" });
 
                 var httpResponseMessage = await client.GetAsync(apiEndpoint);
                 var responseToLog = new
