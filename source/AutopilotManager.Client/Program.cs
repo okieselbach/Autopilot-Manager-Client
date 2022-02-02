@@ -106,33 +106,40 @@ namespace AutopilotManager.Client
                     // --ignore Autopilot assignment found
                     if (!_ignoreAutopilotAssignment)
                     {
-                        // is this already a Autopilot device?
-                        var rkbase = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
-                        using (RegistryKey key = rkbase.OpenSubKey(@"SOFTWARE\Microsoft\Provisioning\Diagnostics\AutoPilot"))
+                        try
                         {
-                            if (key != null)
+                            // is this already a Autopilot device?
+                            var rkbase = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+                            using (RegistryKey key = rkbase.OpenSubKey(@"SOFTWARE\Microsoft\Provisioning\Diagnostics\AutoPilot"))
                             {
-                                var tenantId = key.GetValue("CloudAssignedTenantId").ToString();
-                                if (!string.IsNullOrEmpty(tenantId))
+                                if (key != null)
                                 {
-                                    _logger.WriteInfo("Device is already Autopilot provisioned");
-                                    _logger.WriteDebug($"CloudAssignedTenantId: {tenantId}");
-
-                                    var tenantDomain = key.GetValue("CloudAssignedTenantDomain").ToString();
-                                    if (!string.IsNullOrEmpty(tenantDomain))
+                                    var tenantId = key.GetValue("CloudAssignedTenantId").ToString();
+                                    if (!string.IsNullOrEmpty(tenantId))
                                     {
-                                        if (_logger.DebugMode)
+                                        _logger.WriteInfo("Device is already Autopilot provisioned");
+                                        _logger.WriteDebug($"CloudAssignedTenantId: {tenantId}");
+
+                                        var tenantDomain = key.GetValue("CloudAssignedTenantDomain").ToString();
+                                        if (!string.IsNullOrEmpty(tenantDomain))
                                         {
-                                            _logger.WriteDebug($"CloudAssignedTenantDomain: {tenantDomain}");
+                                            if (_logger.DebugMode)
+                                            {
+                                                _logger.WriteDebug($"CloudAssignedTenantDomain: {tenantDomain}");
+                                            }
+                                            else
+                                            {
+                                                _logger.WriteInfo($"Assigned tenant domain: {tenantDomain}");
+                                            }
                                         }
-                                        else
-                                        {
-                                            _logger.WriteInfo($"Assigned tenant domain: {tenantDomain}");
-                                        }
+                                        return;
                                     }
-                                    return;
                                 }
                             }
+                        }
+                        catch (Exception)
+                        {
+                            _logger.WriteInfo("Couldn't check existing Autopilot assignment, proceeding.");
                         }
                     }
                 }

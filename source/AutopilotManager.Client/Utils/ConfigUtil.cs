@@ -8,7 +8,7 @@ namespace AutopilotManager.Utils
     {
         public static string GetBackendUrl()
         {
-            //return "https://autopilotmanager-XXXX.azurewebsites.net";
+            //return "https://autopilotmanager-xxx.azurewebsites.net";
             return GetConfigValue("BackendUrl");
         }
         public static string GetConfigValue(string name)
