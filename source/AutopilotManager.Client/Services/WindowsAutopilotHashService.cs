@@ -30,59 +30,81 @@ namespace AutopilotManager.Services
             MessageReceived(this, new MessageReceivedEventArgs { Message = "CIM session started" });
             MessageReceived(this, new MessageReceivedEventArgs { Message = "Getting information for current system" });
 
-            var osQuery = new ObjectQuery("SELECT * FROM Win32_OperatingSystem");
-            var osSearcher = new ManagementObjectSearcher(scope, osQuery);
-            var osQueryCollection = osSearcher.Get();
-            foreach (var entry in osQueryCollection)
+            try
             {
-                var version = entry["Version"].ToString();
-                if (version.StartsWith("10."))
+                var osQuery = new ObjectQuery("SELECT * FROM Win32_OperatingSystem");
+                var osSearcher = new ManagementObjectSearcher(scope, osQuery);
+                var osQueryCollection = osSearcher.Get();
+                foreach (var entry in osQueryCollection)
                 {
-                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"OS version [{version}] fetched" });
+                    var version = entry["Version"].ToString();
+                    if (version.StartsWith("10."))
+                    {
+                        MessageReceived(this, new MessageReceivedEventArgs { Message = $"OS version [{version}] fetched" });
+                    }
+                    else
+                    {
+                        return null;
+                    }
                 }
-                else
-                {
-                    return null;
-                }
+            }
+            catch (ManagementException ex)
+            {
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: OS version could not be fetched! {ex.Message}" });
             }
 
             var information = new SystemInformation { Id = Guid.NewGuid() };
 
-            var serialNumberQuery = new ObjectQuery("SELECT * FROM Win32_BIOS");
-            var serialNumberSearcher = new ManagementObjectSearcher(scope, serialNumberQuery);
-            var serialNumberQueryCollection = serialNumberSearcher.Get();
-            foreach (var entry in serialNumberQueryCollection)
+
+            try
             {
-                var serialNumber = entry["SerialNumber"].ToString();
-                information.SerialNumber = serialNumber;
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Serial number [{serialNumber}] fetched" });
+                var serialNumberQuery = new ObjectQuery("SELECT * FROM Win32_BIOS");
+                var serialNumberSearcher = new ManagementObjectSearcher(scope, serialNumberQuery);
+                var serialNumberQueryCollection = serialNumberSearcher.Get();
+                foreach (var entry in serialNumberQueryCollection)
+                {
+                    var serialNumber = entry["SerialNumber"].ToString();
+                    information.SerialNumber = serialNumber;
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"Serial number [{serialNumber}] fetched" });
+                }
+            }
+            catch (ManagementException ex)
+            {
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: Serial number could not be fetched! {ex.Message}" });
             }
 
-            string model = string.Empty;
-            var systemInformationQuery = new ObjectQuery("SELECT * FROM Win32_ComputerSystem");
-            var systemInformationSearcher = new ManagementObjectSearcher(scope, systemInformationQuery);
-            var systemInformationQueryCollection = systemInformationSearcher.Get();
-            foreach (var entry in systemInformationQueryCollection)
+            try
             {
-                var manufacturer = entry["Manufacturer"].ToString();
-                if (manufacturer.ToLower().Contains("lenovo"))
+                string model = string.Empty;
+                var systemInformationQuery = new ObjectQuery("SELECT * FROM Win32_ComputerSystem");
+                var systemInformationSearcher = new ManagementObjectSearcher(scope, systemInformationQuery);
+                var systemInformationQueryCollection = systemInformationSearcher.Get();
+                foreach (var entry in systemInformationQueryCollection)
                 {
-                    var lenovoSystemInformationQuery = new ObjectQuery("SELECT * FROM Win32_ComputerSystemProduct");
-                    var lenovoSystemInformationSearcher = new ManagementObjectSearcher(scope, lenovoSystemInformationQuery);
-                    var lenovoSystemInformationQueryCollection = lenovoSystemInformationSearcher.Get();
-                    foreach (var systemEntry in lenovoSystemInformationQueryCollection)
+                    var manufacturer = entry["Manufacturer"].ToString();
+                    if (manufacturer.ToLower().Contains("lenovo"))
                     {
-                        model = systemEntry["Version"].ToString();
-                        break;
+                        var lenovoSystemInformationQuery = new ObjectQuery("SELECT * FROM Win32_ComputerSystemProduct");
+                        var lenovoSystemInformationSearcher = new ManagementObjectSearcher(scope, lenovoSystemInformationQuery);
+                        var lenovoSystemInformationQueryCollection = lenovoSystemInformationSearcher.Get();
+                        foreach (var systemEntry in lenovoSystemInformationQueryCollection)
+                        {
+                            model = systemEntry["Version"].ToString();
+                            break;
+                        }
                     }
+                    else
+                    {
+                        model = entry["Model"].ToString(); 
+                    }
+                    information.Manufacturer = manufacturer;
+                    information.Model = model;
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"Device manufacturer [{manufacturer}] and model [{model}] fetched" });
                 }
-                else
-                {
-                    model = entry["Model"].ToString(); 
-                }
-                information.Manufacturer = manufacturer;
-                information.Model = model;
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Device manufacturer [{manufacturer}] and model [{model}] fetched" });
+            }
+            catch (ManagementException ex)
+            {
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: Manufacturer and/or model could not be fetched! {ex.Message}" });
             }
 
             try
@@ -105,7 +127,7 @@ namespace AutopilotManager.Services
             }
             catch (ManagementException ex)
             {
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"DeviceHardwareData: {ex.Message}(probably not running as system)" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"ERROR: DeviceHardwareData {ex.Message}(probably not running as system)" });
             }
 
             return information;           
