@@ -127,7 +127,7 @@ namespace AutopilotManager.Services
             }
             catch (ManagementException ex)
             {
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"ERROR: DeviceHardwareData {ex.Message}(probably not running as system)" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"ERROR: DeviceHardwareData - {ex.Message}(probably not running as system)" });
             }
 
             return information;           
