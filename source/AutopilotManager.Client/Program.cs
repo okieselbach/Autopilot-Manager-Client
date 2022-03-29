@@ -269,7 +269,7 @@ namespace AutopilotManager.Client
                             case "h":
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo($"AutopilotManager.Client v{Assembly.GetExecutingAssembly().GetName().Version.ToString(2)}");
-                                _logger.WriteInfo($"2021 by Oliver Kieselbach (oliverkieselbach.com)");
+                                _logger.WriteInfo($"2022 by Oliver Kieselbach (oliverkieselbach.com)");
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo($"USAGE: {Assembly.GetExecutingAssembly().GetName().Name} <URL> [options...]");
                                 _logger.WriteInfo("");
