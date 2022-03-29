@@ -48,9 +48,9 @@ namespace AutopilotManager.Services
                     }
                 }
             }
-            catch (ManagementException ex)
+            catch (Exception)
             {
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: OS version could not be fetched! {ex.Message}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: OS version could not be fetched!" });
             }
 
             var information = new SystemInformation { Id = Guid.NewGuid() };
@@ -68,9 +68,9 @@ namespace AutopilotManager.Services
                     MessageReceived(this, new MessageReceivedEventArgs { Message = $"Serial number [{serialNumber}] fetched" });
                 }
             }
-            catch (ManagementException ex)
+            catch (Exception)
             {
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: Serial number could not be fetched! {ex.Message}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: Serial number could not be fetched!" });
             }
 
             try
@@ -102,9 +102,9 @@ namespace AutopilotManager.Services
                     MessageReceived(this, new MessageReceivedEventArgs { Message = $"Device manufacturer [{manufacturer}] and model [{model}] fetched" });
                 }
             }
-            catch (ManagementException ex)
+            catch (Exception)
             {
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: Manufacturer and/or model could not be fetched! {ex.Message}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: Manufacturer and/or model could not be fetched!" });
             }
 
             try
