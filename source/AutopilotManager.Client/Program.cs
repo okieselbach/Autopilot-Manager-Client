@@ -14,9 +14,13 @@ using Microsoft.Win32;
 
 namespace AutopilotManager.Client
 {
-    // configured AutopilotManager.Client to .NET Framework 4.6 as this is the lowest common Framework supported by every Windows 10 version released.
-    // This ensures best compatibility to run the qr.exe without any issues. .NET Standard and .NET Freamework 4.7.2 is not available with every Windows 10 version
+    // Initially configured AutopilotManager.Client to .NET Framework 4.6 as this is the lowest common Framework supported by every Windows 10 version released.
+    // This ensures best compatibility to run the ap.exe without any issues. .NET Standard and .NET Freamework 4.7.2 is not available with every Windows 10 version
     // e.g. System.Net.Http in version 4.2.0 has a breaking change and when referenced you loose support in older Windows 10 versions. So we make sure to use version 4.0.0
+
+    // due to incompatibilities with newer Windows OS versions (21H2) I switched .NET Framework to 4.8 and native 64-bit binary!
+    // according to the docs Windows 10 May 2019 Update (version 1903) is the oldest with preinstalled .NET 4.8. This is the lowest Windows OS version we are support from now on.
+    // https://docs.microsoft.com/en-us/dotnet/framework/get-started/system-requirements
 
     // M. Niehaus created a script which works similar to the AutopilotManager/client solution, but targeted (imho) more or less for a IT personal to onboard a device on the fly
     // https://oofhours.com/2020/07/13/automating-the-windows-autopilot-device-hash-import-and-profile-assignment-process/
