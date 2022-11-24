@@ -110,16 +110,18 @@ namespace AutopilotManager.Client
                     {
                         await Task.Delay(TimeSpan.FromSeconds(10));
                     }
-                    firstRun = false;
 
                     await _backendClient.GetResultAsync(_systemInformation, _backendUrl);
 
-                    if (labelRegisteredValue.Text.StartsWith("Queued", StringComparison.OrdinalIgnoreCase))
+                    //if (labelRegisteredValue.Text.StartsWith("Queued", StringComparison.OrdinalIgnoreCase) ||
+                    //    string.IsNullOrEmpty(labelRegisteredValue.Text))
+                    if (firstRun)
                     {
                         _stopWatch.Start();
+                        firstRun = false;
                     }
-                    else if (labelRegisteredValue.Text.StartsWith("Success", StringComparison.OrdinalIgnoreCase) ||
-                            labelRegisteredValue.Text.StartsWith("Already registered", StringComparison.OrdinalIgnoreCase))
+                    if (labelRegisteredValue.Text.StartsWith("Success", StringComparison.OrdinalIgnoreCase) ||
+                        labelRegisteredValue.Text.StartsWith("Already registered", StringComparison.OrdinalIgnoreCase))
                     {
                         // SUCCESS - change colors
                         success = true;
@@ -181,7 +183,7 @@ namespace AutopilotManager.Client
                     }
                     else
                     {
-                        labelProvisioningInformation.Text = "Your device Manufacturer or Model is not allowed to be provisioned.";
+                        labelProvisioningInformation.Text = "Your device is not allowed to be provisioned.";
                     }
                     
                 }
@@ -199,7 +201,8 @@ namespace AutopilotManager.Client
                 // poor man's animation :-) to signal we are working...
                 var processingMaxAnimation = "Processing.....";
 
-                if (labelRegisteredValue.Text.StartsWith("Queued"))
+                if (labelRegisteredValue.Text.StartsWith("Queued") ||
+                    string.IsNullOrEmpty(labelRegisteredValue.Text))
                 {
                     labelRegisteredValue.Text = "Processing";
                     labelRegisteredValue.Refresh();

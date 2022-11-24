@@ -52,6 +52,8 @@ namespace AutopilotManager.Client
         static async Task Main(string[] args)
         {
             _logger = new LogUtil();
+            _logger.WriteInfo($"AutopilotManager.Client v{Assembly.GetExecutingAssembly().GetName().Version.ToString(3)} started");
+
             _backendUrl = ParseCommandlineArgs(args);
             _backendClient = new BackendClient();
             _backendClient.MessageReceived += BackendClient_MessageReceived;
@@ -272,7 +274,7 @@ namespace AutopilotManager.Client
                             case "?":
                             case "h":
                                 _logger.WriteInfo("");
-                                _logger.WriteInfo($"AutopilotManager.Client v{Assembly.GetExecutingAssembly().GetName().Version.ToString(2)}");
+                                _logger.WriteInfo($"AutopilotManager.Client v{Assembly.GetExecutingAssembly().GetName().Version.ToString(3)}");
                                 _logger.WriteInfo($"2022 by Oliver Kieselbach (oliverkieselbach.com)");
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo($"USAGE: {Assembly.GetExecutingAssembly().GetName().Name} <URL> [options...]");

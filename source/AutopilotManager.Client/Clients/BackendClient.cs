@@ -8,6 +8,7 @@ using AutopilotManager.Models;
 using System.Net;
 using System.Net.Sockets;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace AutopilotManager.Clients
 {
@@ -17,9 +18,12 @@ namespace AutopilotManager.Clients
         public event EventHandler<ResultEventArgs> ResultReceived;
         private readonly Dictionary<string, int> _requiredEnrollmentUrlsTcpConnect;
         private readonly string _ntpAddress;
+        private readonly Stopwatch _stopWatch;
 
         public BackendClient()
         {
+            _stopWatch = new Stopwatch();
+
             // Enrollment Endpoints
             // https://docs.microsoft.com/en-us/mem/autopilot/networking-requirements
             // https://docs.microsoft.com/en-us/mem/intune/fundamentals/intune-endpoints
@@ -202,6 +206,8 @@ namespace AutopilotManager.Clients
 
         public async Task SaveDataAsync(SystemInformation systemInformation, string backendUrl)
         {
+            _stopWatch.Start();
+
             string apiEndpoint = $"/api-autopilot/{systemInformation.Id}/save-information";
             var payload = JsonConvert.SerializeObject(systemInformation);
             using (var client = new HttpClient { BaseAddress = new Uri(backendUrl) })
@@ -209,8 +215,8 @@ namespace AutopilotManager.Clients
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Posting data to {backendUrl.TrimEnd('/')}{apiEndpoint}" });
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Payload is {payload}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Posting data to {backendUrl.TrimEnd('/')}{apiEndpoint}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Payload is {payload}" });
 
                 var httpResponseMessage = await client.PostAsync(apiEndpoint, new StringContent(payload, Encoding.UTF8, "application/json"));
                 var responseToLog = new
@@ -221,13 +227,13 @@ namespace AutopilotManager.Clients
                     reasonPhrase = httpResponseMessage.ReasonPhrase,
                     errorMessage = httpResponseMessage.RequestMessage
                 };
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Response is {JsonConvert.SerializeObject(responseToLog)}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Response is {JsonConvert.SerializeObject(responseToLog)}" });
 
                 switch (httpResponseMessage.StatusCode)
                 {
                     case HttpStatusCode.OK:
                         // 200
-                        MessageReceived(this, new MessageReceivedEventArgs { Message = "Data posted successfully" });
+                        MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Data posted successfully" });
                         break;
                     case HttpStatusCode.BadRequest:
                         // 400
@@ -238,8 +244,8 @@ namespace AutopilotManager.Clients
 
                 if (!httpResponseMessage.IsSuccessStatusCode)
                 {
-                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"Status code is {httpResponseMessage.StatusCode}" });
-                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"Reason phrase is {httpResponseMessage.ReasonPhrase}" });
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Status code is {httpResponseMessage.StatusCode}" });
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Reason phrase is {httpResponseMessage.ReasonPhrase}" });
                 }
 
                 //httpResponseMessage.EnsureSuccessStatusCode();
@@ -256,7 +262,7 @@ namespace AutopilotManager.Clients
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Getting data from {backendUrl.TrimEnd('/')}{apiEndpoint}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Getting data from {backendUrl.TrimEnd('/')}{apiEndpoint}" });
 
                 var httpResponseMessage = await client.GetAsync(apiEndpoint);
                 var responseToLog = new
@@ -267,7 +273,7 @@ namespace AutopilotManager.Clients
                     reasonPhrase = httpResponseMessage.ReasonPhrase,
                     errorMessage = httpResponseMessage.RequestMessage
                 };
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"Response is {JsonConvert.SerializeObject(responseToLog)}" });
+                MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Response is {JsonConvert.SerializeObject(responseToLog)}" });
 
                 switch (httpResponseMessage.StatusCode)
                 {
@@ -286,6 +292,7 @@ namespace AutopilotManager.Clients
                     case HttpStatusCode.NoContent:
                         // 204
                         ResultReceived(this, new ResultEventArgs { Message = "Success" });
+                        _stopWatch.Reset();
                         break;
                     case HttpStatusCode.Conflict:
                         // 409
@@ -297,14 +304,17 @@ namespace AutopilotManager.Clients
                         {
                             ResultReceived(this, new ResultEventArgs { Message = "Registered elswere" });
                         }
+                        _stopWatch.Reset();
                         break;
                     case HttpStatusCode.Gone:
                         // 410
                         ResultReceived(this, new ResultEventArgs { Message = "Timed out" });
+                        _stopWatch.Reset();
                         break;
                     default:
                         // 500 and others
                         ResultReceived(this, new ResultEventArgs { Message = "Error occured" });
+                        _stopWatch.Reset();
                         break;
                 }
             }
