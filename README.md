@@ -8,7 +8,7 @@ A small client to gather Autopilot information during OOBE via [Shift] + [F10] a
 
 ## Prerequisites
 
-Requires the .NET Framework 4.6. The .NET version 4.6 is used explicitly, as it defines the lowset common .NET version for Windows 10. Even the first Windows 10 versions are coming with .NET Framework 4.6. So we do not introduce any dependency here.
+Requires the .NET Framework 4.6. The .NET version 4.6 is used explicitly (change in latest version to .NET 4.8 to support newer Windows Versions), as it defines the lowset common .NET version for Windows 10. Even the first Windows 10 versions are coming with .NET Framework 4.6. So we do not introduce any dependency here.
 
 ## Usage
 
