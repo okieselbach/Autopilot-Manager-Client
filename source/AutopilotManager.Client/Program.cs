@@ -11,6 +11,12 @@ using System.Reflection;
 using System.Windows.Forms;
 using System.IO;
 using Microsoft.Win32;
+using System.Net;
+using System.Runtime;
+using System.Windows;
+using System.Xml.Linq;
+using System.Xml.XPath;
+using System.Net.Cache;
 
 namespace AutopilotManager.Client
 {
@@ -39,7 +45,13 @@ namespace AutopilotManager.Client
         private static bool _ignoreAutopilotAssignment = false;
         private static bool _fetchHardwareDataOnly = false;
         private static bool _deleteManagedDeviceOnly = false;
-
+        private static bool _bypassExtendedValidationAndFallbackToManualApproval = false;
+        private static bool _skipClientVersionCheck = false;
+        private const string _updateXmlUri = "https://github.com/okieselbach/Autopilot-Manager-Client/raw/master/dist/update.xml";
+        private static string _version = string.Empty;
+        private static string _newVersion = string.Empty;
+        private static string _updateTempFileName = string.Empty;
+        
         // ap.exe should be called from OOBE [Shift] + [F10] command prompt via:
 
         // powershell -c iwr ap.domain.com -o ap.exe & qr
@@ -52,9 +64,21 @@ namespace AutopilotManager.Client
         static async Task Main(string[] args)
         {
             _logger = new LogUtil();
-            _logger.WriteInfo($"AutopilotManager.Client v{Assembly.GetExecutingAssembly().GetName().Version.ToString(3)} started");
+            _version = Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
 
+            _logger.WriteInfo($"AutopilotManager.Client v{_version}");
             _backendUrl = ParseCommandlineArgs(args);
+            
+            if (!_skipClientVersionCheck)
+            {
+                _logger.WriteInfo("Checking for new client version...");
+                if (await CheckForNewClientVersion())
+                {
+                    _logger.WriteInfo($"Found new client version {_newVersion}, updating now and restarting process...");
+                    UpdateClient();
+                }
+            }
+
             _backendClient = new BackendClient();
             _backendClient.MessageReceived += BackendClient_MessageReceived;
             _backendClient.ResultReceived += BackendClient_ResultReceived;
@@ -65,6 +89,12 @@ namespace AutopilotManager.Client
             {
                 // default Action is IMPORT
                 var action = "IMPORT";
+
+                if (_bypassExtendedValidationAndFallbackToManualApproval)
+                {
+                    Debug.WriteLine("Identified as device [BYPASS] request");
+                    action = "BYPASS";
+                }
 
                 // --erase device deletion request found
                 if (_deleteManagedDeviceOnly)
@@ -271,10 +301,16 @@ namespace AutopilotManager.Client
                                 _deleteManagedDeviceOnly = true;
                                 _logger.WriteDebug($"Delete managed device only");
                                 break;
+                            case "g":
+                                _skipClientVersionCheck = true;
+                                _logger.WriteDebug($"Client Verison check skipped");
+                                break;
+                            case "b":
+                                _bypassExtendedValidationAndFallbackToManualApproval = true;
+                                Debug.WriteLine($"Parameter for [BYPASS] request identified");
+                                break;
                             case "?":
                             case "h":
-                                _logger.WriteInfo("");
-                                _logger.WriteInfo($"AutopilotManager.Client v{Assembly.GetExecutingAssembly().GetName().Version.ToString(3)}");
                                 _logger.WriteInfo($"2022 by Oliver Kieselbach (oliverkieselbach.com)");
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo($"USAGE: {Assembly.GetExecutingAssembly().GetName().Name} <URL> [options...]");
@@ -290,6 +326,7 @@ namespace AutopilotManager.Client
                                 _logger.WriteInfo($"-f, --fetch, /f, /fetch       fetch only hardware data, no result is send");
                                 _logger.WriteInfo($"-e, --erase, /e, /erase       send delete device request, enabled server support is needed and");
                                 _logger.WriteInfo($"                              deletion requests are only processed with enabled approval mode");
+                                _logger.WriteInfo($"-g                            skip client version check on startup");
                                 Environment.Exit(0);
                                 break;
                             default:
@@ -347,6 +384,101 @@ namespace AutopilotManager.Client
             _preCheckErrorMessage = e.Message;
             _logger.WriteDebug($"Received result: {e.Message}");
             _logger.WriteTrace($"Received result: {e.Message}");
+        }
+
+        private static async Task<bool> CheckForNewClientVersion()
+        {
+            try
+            {
+                using (var webClient = new WebClient())
+                {
+                    var systemWebProxy = WebRequest.GetSystemWebProxy();
+                    systemWebProxy.Credentials = CredentialCache.DefaultCredentials;
+                    webClient.Proxy = systemWebProxy;
+                    webClient.CachePolicy = new RequestCachePolicy(RequestCacheLevel.NoCacheNoStore);
+
+                    // Download update.xml file
+                    var data = await webClient.DownloadDataTaskAsync(new Uri(_updateXmlUri));
+                    var xDocument = XDocument.Load(new MemoryStream(data));
+
+                    var url = xDocument.XPathSelectElement("./LatestVersion/DownloadURL")?.Value;
+                    var version = xDocument.XPathSelectElement("./LatestVersion/VersionNumber")?.Value;
+                    _newVersion = version;
+
+                    if (url == null || !url.StartsWith("https")) return false;
+                    if (version == null) return false;
+                    if (string.CompareOrdinal(version, 0, _version, 0, version.Length) <= 0) return false;
+
+                    _updateTempFileName = Path.Combine(Path.GetTempPath(), $"{Path.GetRandomFileName()}");
+                    if (_updateTempFileName == null) return false;
+
+                    // Download new binary
+                    await webClient.DownloadFileTaskAsync(new Uri(url), _updateTempFileName);
+
+                    // simple sanity check, bigger than 10KB? we assume it is not a dummy or broken binary (e.g. 0 KB file)
+                    if (!File.Exists(_updateTempFileName) || new FileInfo(_updateTempFileName).Length < 1024 * 10)
+                    {
+                        _logger.WriteDebug($"Download failed.");
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteDebug($"Download failed: {ex.Message}");
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void UpdateClient()
+        {
+            var path = Assembly.GetExecutingAssembly().Location;
+
+            // normalize command line arguments for correct PS execution
+            string[] arguments = Environment.GetCommandLineArgs();
+            var argumentsString = "'" + string.Join("','", arguments.Skip(1).ToArray()).Trim() + "'";
+
+            try
+            {
+                // call a separate process (PowerShell) to overwrite the app binaries after app shutdown...
+                // to give the app enough time for shutdown we wait 1 seconds before replacing - prevent currently in use scenarios
+                using (var p = new Process())
+                {
+                    p.StartInfo.UseShellExecute = false;
+                    p.StartInfo.FileName = "PowerShell.exe";
+                    p.StartInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command \"& { " +
+                                            "Start-Sleep 1; " +
+                                            $"Copy-Item -Path '{_updateTempFileName}' -Destination '{path}' -Force; " +
+                                            $"Remove-Item -Path '{_updateTempFileName}' -Force; " +
+                                            $"Start-Process -FilePath '{path}' -ArgumentList {argumentsString}" + 
+                                            "}\"";
+                    p.StartInfo.CreateNoWindow = true;
+
+                    Debug.WriteLine($"{p.StartInfo.FileName} {p.StartInfo.Arguments}");
+
+                    p.Start();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteDebug($"UpdateClient failed: {ex.Message}");
+                try
+                {
+                    if (_updateTempFileName != null)
+                    {
+                        if (!File.Exists(_updateTempFileName))
+                            File.Delete(_updateTempFileName);
+                    }
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+            }
+
+            Environment.Exit(0);
         }
     }
 }

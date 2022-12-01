@@ -264,58 +264,65 @@ namespace AutopilotManager.Clients
 
                 MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Getting data from {backendUrl.TrimEnd('/')}{apiEndpoint}" });
 
-                var httpResponseMessage = await client.GetAsync(apiEndpoint);
-                var responseToLog = new
+                try
                 {
-                    statusCode = httpResponseMessage.StatusCode,
-                    content = await httpResponseMessage.Content.ReadAsStringAsync(),
-                    headers = httpResponseMessage.Headers,
-                    reasonPhrase = httpResponseMessage.ReasonPhrase,
-                    errorMessage = httpResponseMessage.RequestMessage
-                };
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Response is {JsonConvert.SerializeObject(responseToLog)}" });
+                    var httpResponseMessage = await client.GetAsync(apiEndpoint);
+                    var responseToLog = new
+                    {
+                        statusCode = httpResponseMessage.StatusCode,
+                        content = await httpResponseMessage.Content.ReadAsStringAsync(),
+                        headers = httpResponseMessage.Headers,
+                        reasonPhrase = httpResponseMessage.ReasonPhrase,
+                        errorMessage = httpResponseMessage.RequestMessage
+                    };
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Response is {JsonConvert.SerializeObject(responseToLog)}" });
 
-                switch (httpResponseMessage.StatusCode)
+                    switch (httpResponseMessage.StatusCode)
+                    {
+                        case HttpStatusCode.Created:
+                            // 201
+                            if (responseToLog.content.ToLower().Contains("approvalmode"))
+                            {
+                                ResultReceived(this, new ResultEventArgs { Message = "ApprovalMode" });
+                            }
+                            ResultReceived(this, new ResultEventArgs { Message = "Queued" });
+                            break;
+                        case HttpStatusCode.Accepted:
+                            // 202
+                            ResultReceived(this, new ResultEventArgs { Message = "Processing" });
+                            break;
+                        case HttpStatusCode.NoContent:
+                            // 204
+                            ResultReceived(this, new ResultEventArgs { Message = "Success" });
+                            _stopWatch.Reset();
+                            break;
+                        case HttpStatusCode.Conflict:
+                            // 409
+                            if (responseToLog.content.ToLower().Contains("806"))
+                            {
+                                ResultReceived(this, new ResultEventArgs { Message = "Already registered" });
+                            }
+                            else if (responseToLog.content.ToLower().Contains("808"))
+                            {
+                                ResultReceived(this, new ResultEventArgs { Message = "Registered elswere" });
+                            }
+                            _stopWatch.Reset();
+                            break;
+                        case HttpStatusCode.Gone:
+                            // 410
+                            ResultReceived(this, new ResultEventArgs { Message = "Timed out" });
+                            _stopWatch.Reset();
+                            break;
+                        default:
+                            // 500 and others
+                            ResultReceived(this, new ResultEventArgs { Message = "Error occured" });
+                            _stopWatch.Reset();
+                            break;
+                    }
+                }
+                catch (Exception ex)
                 {
-                    case HttpStatusCode.Created:
-                        // 201
-                        if (responseToLog.content.ToLower().Contains("approvalmode"))
-                        {
-                            ResultReceived(this, new ResultEventArgs { Message = "ApprovalMode" });
-                        }
-                        ResultReceived(this, new ResultEventArgs { Message = "Queued" });
-                        break;
-                    case HttpStatusCode.Accepted:
-                        // 202
-                        ResultReceived(this, new ResultEventArgs { Message = "Processing" });
-                        break;
-                    case HttpStatusCode.NoContent:
-                        // 204
-                        ResultReceived(this, new ResultEventArgs { Message = "Success" });
-                        _stopWatch.Reset();
-                        break;
-                    case HttpStatusCode.Conflict:
-                        // 409
-                        if (responseToLog.content.ToLower().Contains("806"))
-                        {
-                            ResultReceived(this, new ResultEventArgs { Message = "Already registered" });
-                        }
-                        else if (responseToLog.content.ToLower().Contains("808"))
-                        {
-                            ResultReceived(this, new ResultEventArgs { Message = "Registered elswere" });
-                        }
-                        _stopWatch.Reset();
-                        break;
-                    case HttpStatusCode.Gone:
-                        // 410
-                        ResultReceived(this, new ResultEventArgs { Message = "Timed out" });
-                        _stopWatch.Reset();
-                        break;
-                    default:
-                        // 500 and others
-                        ResultReceived(this, new ResultEventArgs { Message = "Error occured" });
-                        _stopWatch.Reset();
-                        break;
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"Exception occured {ex}" });
                 }
             }
         }
