@@ -438,7 +438,12 @@ namespace AutopilotManager.Client
 
             // normalize command line arguments for correct PS execution
             string[] arguments = Environment.GetCommandLineArgs();
-            var argumentsString = "'" + string.Join("','", arguments.Skip(1).ToArray()).Trim() + "'";
+            string argumentsString = String.Empty;
+
+            if (arguments.Length > 1)
+            {
+                argumentsString = "-ArgumentList '" + string.Join("','", arguments.Skip(1).ToArray()).Trim() + "'";
+            }
 
             try
             {
@@ -452,7 +457,7 @@ namespace AutopilotManager.Client
                                             "Start-Sleep 1; " +
                                             $"Copy-Item -Path '{_updateTempFileName}' -Destination '{path}' -Force; " +
                                             $"Remove-Item -Path '{_updateTempFileName}' -Force; " +
-                                            $"Start-Process -FilePath '{path}' -ArgumentList {argumentsString}" + 
+                                            $"Start-Process -FilePath '{path}' {argumentsString}" + 
                                             "}\"";
                     p.StartInfo.CreateNoWindow = true;
 
