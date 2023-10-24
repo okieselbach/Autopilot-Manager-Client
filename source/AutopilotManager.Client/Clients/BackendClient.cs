@@ -56,7 +56,10 @@ namespace AutopilotManager.Clients
                 //{ "approdimedatapri.azureedge.net", 443 }, // Asia Pacific
                 //{ "approdimedatasec.azureedge.net", 443 }  // Asia Pacific
                 //{ "approdimedatahotfix.azureedge.net", 443 }. // Asia Pacific
-
+                { "lgmsapeweu.blob.core.windows.net", 443 },
+                { "ekop.intel.com", 443 }, // ekop.intel.com/ekcertservice
+                { "ekcert.spserv.microsoft.com", 443 }, // ekcert.spserv.microsoft.com/EKCertificate/GetEKCertificate/v1
+                { "ftpm.amd.com", 443 } // ftpm.amd.com/pki/aia
                 // tokenprovider.termsofuse.identitygovernance.azure.com
                 // wdcp.microsoft.com
             };

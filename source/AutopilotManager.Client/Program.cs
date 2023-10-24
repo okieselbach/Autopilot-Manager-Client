@@ -47,6 +47,8 @@ namespace AutopilotManager.Client
         private static bool _deleteManagedDeviceOnly = false;
         private static bool _bypassExtendedValidationAndFallbackToManualApproval = false;
         private static bool _skipClientVersionCheck = false;
+        private static bool _quietMode = false;
+        private static bool _noWait = false;
         private const string _updateXmlUri = "https://github.com/okieselbach/Autopilot-Manager-Client/raw/master/dist/update.xml";
         private static string _version = string.Empty;
         private static string _newVersion = string.Empty;
@@ -225,7 +227,7 @@ namespace AutopilotManager.Client
                     var qrCodeNoSelfServiceImage = QrCodeUtil.GenerateQrCode(urlNoSelfService.ToString());
 
                     var form = new QrCodeForm(qrCodeImage, qrCodeNoSelfServiceImage, _systemInformation, _backendClient, _backendUrl, _preCheckErrorMessage, _endpointsValidationResult);
-                    form.DisplayData();
+                    form.DisplayData(_quietMode, _noWait);
 
                     if (form.DialogResult == DialogResult.Retry)
                     {
@@ -308,6 +310,14 @@ namespace AutopilotManager.Client
                             case "b":
                                 _bypassExtendedValidationAndFallbackToManualApproval = true;
                                 Debug.WriteLine($"Parameter for [BYPASS] request identified");
+                                break;
+                            case "q":
+                                _quietMode = true;
+                                _logger.WriteDebug($"Quiet mode without UI");
+                                break;
+                            case "n":
+                                _noWait = true;
+                                _logger.WriteDebug($"No Wait for processing");
                                 break;
                             case "?":
                             case "h":

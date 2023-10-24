@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -17,6 +18,8 @@ namespace AutopilotManager.Client
         private readonly string _preCheckErrorMessage;
         private readonly Stopwatch _stopWatch;
         private readonly bool _endpointsValidationResult;
+        private bool _quietMode;
+        private bool _noWait;
 
         public QrCodeForm(Bitmap idQrCodeImage, 
             Bitmap qrCodeNoSelfServiceImage,
@@ -34,14 +37,18 @@ namespace AutopilotManager.Client
             _stopWatch = new Stopwatch();
             _preCheckErrorMessage = preCheckErrorMessage;
             _endpointsValidationResult = endpointsValidationResult;
+            _quietMode = false;
 
             _backendClient.ResultReceived += backendClient_ResultReceived;
 
             InitializeComponent();
         }
 
-        public void DisplayData()
+        public void DisplayData(bool quietMode, bool noWait)
         {
+            _quietMode = quietMode;
+            _noWait = noWait;
+
             pictureBoxQrCode.Image = _idQrCodeImage;
             labelIdValue.Text = _systemInformation.Id.ToString();
             labelManufacturerValue.Text = _systemInformation.Manufacturer;
@@ -72,6 +79,15 @@ namespace AutopilotManager.Client
                     graphics.DrawLine(blackPen, 75, 5, 5, 75);
                 }
                 pictureBoxQrCode.Image = qrPlaceHolderImage;
+            }
+
+            if (_quietMode)
+            {                
+                Location = new Point(0, 0);
+                Size = new Size(1, 1);
+                Opacity = 0;
+                ShowIcon = false;
+                ShowInTaskbar = false;
             }
 
             ShowDialog();
@@ -140,6 +156,17 @@ namespace AutopilotManager.Client
                         
                         labelCancel.ForeColor = Color.White;
                         labelCancel.Show();
+
+                        if (_quietMode)
+                        {
+                            Application.Exit();
+                        }
+                    }
+
+                    if ((labelRegisteredValue.Text.StartsWith("Queued", StringComparison.OrdinalIgnoreCase) && _noWait) ||
+                        (labelRegisteredValue.Text.StartsWith("Processing", StringComparison.OrdinalIgnoreCase) && _noWait))
+                    {
+                        break;
                     }
 
                 } while (labelRegisteredValue.Text.StartsWith("Queued", StringComparison.OrdinalIgnoreCase) ||
@@ -149,6 +176,12 @@ namespace AutopilotManager.Client
                 _stopWatch.Stop();
                 labelRegisteredValue.Text += $" (elapsed time: {Math.Ceiling(_stopWatch.Elapsed.TotalMinutes)} minutes)";
                 labelRegisteredValue.Refresh();
+
+                if (_quietMode || _noWait)
+                {
+                    Environment.ExitCode = 1;
+                    Application.Exit();
+                }
             }
 
             if (!string.IsNullOrEmpty(_preCheckErrorMessage) || !success)
@@ -190,6 +223,12 @@ namespace AutopilotManager.Client
                 else if (!success)
                 {
                     labelProvisioningInformation.Text = $"Something went wrong, we couldn't {_systemInformation.Action.ToLower()} your device. Contact the IT admin to troubleshoot.";
+                }
+
+                if (_quietMode)
+                {
+                    Environment.ExitCode = 1;
+                    Application.Exit();
                 }
             }
         }
