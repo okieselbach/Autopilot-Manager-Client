@@ -1,7 +1,10 @@
 ﻿using AutopilotManager.Clients;
+using Microsoft.Win32;
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -20,6 +23,7 @@ namespace AutopilotManager.Client
         private readonly bool _endpointsValidationResult;
         private bool _quietMode;
         private bool _noWait;
+        private bool _skipHardwareHashUpload;
 
         public QrCodeForm(Bitmap idQrCodeImage, 
             Bitmap qrCodeNoSelfServiceImage,
@@ -27,7 +31,8 @@ namespace AutopilotManager.Client
             BackendClient backendClient, 
             string backendUrl, 
             string preCheckErrorMessage, 
-            bool endpointsValidationResult)
+            bool endpointsValidationResult,
+            bool skipHardwareHashUpload)
         {
             _idQrCodeImage = idQrCodeImage;
             _qrCodeNoSelfServiceImage = qrCodeNoSelfServiceImage;
@@ -38,6 +43,7 @@ namespace AutopilotManager.Client
             _preCheckErrorMessage = preCheckErrorMessage;
             _endpointsValidationResult = endpointsValidationResult;
             _quietMode = false;
+            _skipHardwareHashUpload = skipHardwareHashUpload;
 
             _backendClient.ResultReceived += backendClient_ResultReceived;
 
@@ -142,19 +148,19 @@ namespace AutopilotManager.Client
                         // SUCCESS - change colors
                         success = true;
 
-                        BackColor = Color.FromArgb(0, 117, 51);
+                        //BackColor = Color.FromArgb(0, 117, 51);
 
-                        if (_systemInformation.Action.StartsWith("import", StringComparison.OrdinalIgnoreCase))
+                        if (_systemInformation.Action.StartsWith("import", StringComparison.OrdinalIgnoreCase) && !_skipHardwareHashUpload)
                         {
                             buttonCancel.Text = "&Reboot";
                         }
-                        else // Deletion request processed
+                        else // Deletion request or Corporate Identifier upload processed
                         {
                             buttonCancel.Text = "&Finish";
                         }
-                        buttonCancel.BackColor = Color.FromArgb(0, 92, 40);
+                        //buttonCancel.BackColor = Color.FromArgb(0, 92, 40);
                         
-                        labelCancel.ForeColor = Color.White;
+                        //labelCancel.ForeColor = Color.White;
                         labelCancel.Show();
 
                         if (_quietMode)
@@ -189,7 +195,7 @@ namespace AutopilotManager.Client
                 // FAILURE - change colors
 
                 // pre-check went wrong like model/manufacturer or import failed
-                BackColor = Color.FromArgb(91, 0, 7);
+                //BackColor = Color.FromArgb(91, 0, 7);
 
                 if (_systemInformation.Action.StartsWith("import", StringComparison.OrdinalIgnoreCase))
                 {
@@ -199,15 +205,17 @@ namespace AutopilotManager.Client
                 {
                     buttonCancel.Text = "&Finish";
                 }
-                buttonCancel.BackColor = Color.FromArgb(119, 0, 8);
+                //buttonCancel.BackColor = Color.FromArgb(119, 0, 8);
 
-                buttonRetry.BackColor = Color.FromArgb(119, 0, 8);
+                //buttonRetry.BackColor = Color.FromArgb(119, 0, 8);
                 buttonRetry.Show();
 
-                labelCancel.ForeColor = Color.White;
+                //labelCancel.ForeColor = Color.White;
                 labelCancel.Show();
 
-                labelProvisioningInformation.ForeColor = Color.FromArgb(254, 197, 114);
+                //labelProvisioningInformation.ForeColor = Color.FromArgb(254, 197, 114);
+                labelProvisioningInformation.ForeColor = Color.FromArgb(255, 69, 0);
+
                 if (!string.IsNullOrEmpty(_preCheckErrorMessage))
                 {
                     if (_preCheckErrorMessage.StartsWith("delete", StringComparison.OrdinalIgnoreCase))
@@ -218,11 +226,16 @@ namespace AutopilotManager.Client
                     {
                         labelProvisioningInformation.Text = "Your device is not allowed to be provisioned.";
                     }
-                    
+
                 }
                 else if (!success)
                 {
                     labelProvisioningInformation.Text = $"Something went wrong, we couldn't {_systemInformation.Action.ToLower()} your device. Contact the IT admin to troubleshoot.";
+                }
+                else
+                {
+                    labelProvisioningInformation.ForeColor = Color.FromArgb(154, 205, 50);
+                    labelProvisioningInformation.Text = $"Registered successful.";
                 }
 
                 if (_quietMode)
@@ -302,6 +315,26 @@ namespace AutopilotManager.Client
             {
                 this.FormBorderStyle = FormBorderStyle.None;
             }
+        }
+
+        private void buttonRetry_MouseHover(object sender, EventArgs e)
+        {
+            buttonRetry.BackColor = Color.FromArgb(0, 62, 146);
+        }
+
+        private void buttonCancel_MouseHover(object sender, EventArgs e)
+        {
+            buttonCancel.BackColor = Color.FromArgb(0, 62, 146);
+        }
+
+        private void buttonCancel_MouseLeave(object sender, EventArgs e)
+        {
+            buttonCancel.BackColor = Color.FromArgb(0, 103, 192);
+        }
+
+        private void buttonRetry_MouseLeave(object sender, EventArgs e)
+        {
+            buttonRetry.BackColor = Color.FromArgb(0, 103, 192);
         }
     }
 }

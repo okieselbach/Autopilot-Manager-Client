@@ -49,6 +49,7 @@ namespace AutopilotManager.Client
         private static bool _skipClientVersionCheck = false;
         private static bool _quietMode = false;
         private static bool _noWait = false;
+        private static bool _skipHardwareHashUpload = false;
         private const string _updateXmlUri = "https://github.com/okieselbach/Autopilot-Manager-Client/raw/master/dist/update.xml";
         private static string _version = string.Empty;
         private static string _newVersion = string.Empty;
@@ -184,7 +185,7 @@ namespace AutopilotManager.Client
 
                 // main work start now
                 _logger.WriteInfo("Fetching system information");
-                _systemInformation = _windowsAutopilotHashService.FetchData();
+                _systemInformation = _windowsAutopilotHashService.FetchData(_skipHardwareHashUpload);
                 _systemInformation.Action = action;
 
                 if (_systemInformation == null)
@@ -193,7 +194,7 @@ namespace AutopilotManager.Client
                     return;
                 }
 
-                if (string.IsNullOrEmpty(_systemInformation.HardwareHash))
+                if (string.IsNullOrEmpty(_systemInformation.HardwareHash) && !_skipHardwareHashUpload)
                 {
                     _logger.WriteInfo("Information couldn't be fetched");
                 }
@@ -226,7 +227,7 @@ namespace AutopilotManager.Client
                     var urlNoSelfService = new Url($"{_backendUrl}/Home/NoSelfService");
                     var qrCodeNoSelfServiceImage = QrCodeUtil.GenerateQrCode(urlNoSelfService.ToString());
 
-                    var form = new QrCodeForm(qrCodeImage, qrCodeNoSelfServiceImage, _systemInformation, _backendClient, _backendUrl, _preCheckErrorMessage, _endpointsValidationResult);
+                    var form = new QrCodeForm(qrCodeImage, qrCodeNoSelfServiceImage, _systemInformation, _backendClient, _backendUrl, _preCheckErrorMessage, _endpointsValidationResult, _skipHardwareHashUpload);
                     form.DisplayData(_quietMode, _noWait);
 
                     if (form.DialogResult == DialogResult.Retry)
@@ -319,16 +320,20 @@ namespace AutopilotManager.Client
                                 _noWait = true;
                                 _logger.WriteDebug($"No Wait for processing");
                                 break;
+                            case "u":
+                                _skipHardwareHashUpload = true;
+                                _logger.WriteDebug($"No Hardware Hash upload");
+                                break;
                             case "?":
                             case "h":
-                                _logger.WriteInfo($"2022 by Oliver Kieselbach (oliverkieselbach.com)");
+                                _logger.WriteInfo($"2024 by Oliver Kieselbach (oliverkieselbach.com)");
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo($"USAGE: {Assembly.GetExecutingAssembly().GetName().Name} <URL> [options...]");
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo("URL must point to the AutopilotManager.Server");
                                 _logger.WriteInfo("");
                                 _logger.WriteInfo($"-v, --verbose, /v, /verbose   enable verbose output");
-                                _logger.WriteInfo($"-d, --debug, /d, / debug      enable verbose output (same output as -v)");
+                                _logger.WriteInfo($"-d, --debug, /d, /debug       enable verbose output (same output as -v)");
                                 _logger.WriteInfo($"-t, --trace, /t, /trace       enables result-check trace output");
                                 _logger.WriteInfo($"-s, --skip, /s, /skip         skip endpoint enrollment verification");
                                 _logger.WriteInfo($"-c, --connect, /c, /connect   endpoint enrollment verification only");
@@ -337,6 +342,7 @@ namespace AutopilotManager.Client
                                 _logger.WriteInfo($"-e, --erase, /e, /erase       send delete device request, enabled server support is needed and");
                                 _logger.WriteInfo($"                              deletion requests are only processed with enabled approval mode");
                                 _logger.WriteInfo($"-g                            skip client version check on startup");
+                                _logger.WriteInfo($"-u                            skip hardware hash harvesting and upload");
                                 Environment.Exit(0);
                                 break;
                             default:

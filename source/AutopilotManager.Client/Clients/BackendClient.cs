@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace AutopilotManager.Clients
 {
@@ -210,6 +211,7 @@ namespace AutopilotManager.Clients
         public async Task SaveDataAsync(SystemInformation systemInformation, string backendUrl)
         {
             _stopWatch.Start();
+            string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString(3); // Get version as "major.minor.build"
 
             string apiEndpoint = $"/api-autopilot/{systemInformation.Id}/save-information";
             var payload = JsonConvert.SerializeObject(systemInformation);
@@ -217,6 +219,7 @@ namespace AutopilotManager.Clients
             {
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.UserAgent.ParseAdd($"AutopilotManager.Client/{_version}");
 
                 MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Posting data to {backendUrl.TrimEnd('/')}{apiEndpoint}" });
                 MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Payload is {payload}" });
@@ -258,12 +261,15 @@ namespace AutopilotManager.Clients
 
         public async Task GetResultAsync(SystemInformation systemInformation, string backendUrl)
         {
+            string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString(3); // Get version as "major.minor.build"
+
             string apiEndpoint = $"/api-autopilot/{systemInformation.Id}/result";
 
             using (var client = new HttpClient { BaseAddress = new Uri(backendUrl) })
             {
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.UserAgent.ParseAdd($"AutopilotManager.Client/{_version}");
 
                 MessageReceived(this, new MessageReceivedEventArgs { Message = $"[{_stopWatch.Elapsed}] Getting data from {backendUrl.TrimEnd('/')}{apiEndpoint}" });
 
@@ -301,13 +307,13 @@ namespace AutopilotManager.Clients
                             break;
                         case HttpStatusCode.Conflict:
                             // 409
-                            if (responseToLog.content.ToLower().Contains("806"))
-                            {
-                                ResultReceived(this, new ResultEventArgs { Message = "Already registered" });
-                            }
-                            else if (responseToLog.content.ToLower().Contains("808"))
+                            if (responseToLog.content.ToLower().Contains("808"))
                             {
                                 ResultReceived(this, new ResultEventArgs { Message = "Registered elswere" });
+                            }
+                            else
+                            {
+                                ResultReceived(this, new ResultEventArgs { Message = "Already registered" });
                             }
                             _stopWatch.Reset();
                             break;

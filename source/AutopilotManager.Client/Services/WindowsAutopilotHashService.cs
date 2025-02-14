@@ -15,7 +15,7 @@ namespace AutopilotManager.Services
     {
         public event EventHandler<MessageReceivedEventArgs> MessageReceived;
 
-        public SystemInformation FetchData()
+        public SystemInformation FetchData(bool skipHardwareHashUpload = false)
         {
             MessageReceived(this, new MessageReceivedEventArgs { Message = "Starting CIM session" });
 
@@ -107,27 +107,30 @@ namespace AutopilotManager.Services
                 MessageReceived(this, new MessageReceivedEventArgs { Message = $"WARNING: Manufacturer and/or model could not be fetched!" });
             }
 
-            try
+            if (!skipHardwareHashUpload)
             {
-                scope.Path = new ManagementPath(@"\\localhost\root\cimv2\mdm\dmmap");
-                scope.Connect();
-                var hardwareHashQuery = new ObjectQuery("SELECT * FROM MDM_DevDetail_Ext01 WHERE InstanceID='Ext' AND ParentID='./DevDetail'");
-                var hardwareHashSearcher = new ManagementObjectSearcher(scope, hardwareHashQuery);
-                var hardwareHashQueryCollection = hardwareHashSearcher.Get();
-                if (hardwareHashQueryCollection.Count < 1)
+                try
                 {
-                    MessageReceived(this, new MessageReceivedEventArgs { Message = "Device hash not found!" });
+                    scope.Path = new ManagementPath(@"\\localhost\root\cimv2\mdm\dmmap");
+                    scope.Connect();
+                    var hardwareHashQuery = new ObjectQuery("SELECT * FROM MDM_DevDetail_Ext01 WHERE InstanceID='Ext' AND ParentID='./DevDetail'");
+                    var hardwareHashSearcher = new ManagementObjectSearcher(scope, hardwareHashQuery);
+                    var hardwareHashQueryCollection = hardwareHashSearcher.Get();
+                    if (hardwareHashQueryCollection.Count < 1)
+                    {
+                        MessageReceived(this, new MessageReceivedEventArgs { Message = "Device hash not found!" });
+                    }
+                    foreach (var entry in hardwareHashQueryCollection)
+                    {
+                        var hardwareHash = entry["DeviceHardwareData"].ToString();
+                        information.HardwareHash = hardwareHash;
+                        MessageReceived(this, new MessageReceivedEventArgs { Message = $"Device hash [{hardwareHash.Substring(0, 5)}...] fetched" });
+                    }
                 }
-                foreach (var entry in hardwareHashQueryCollection)
+                catch (ManagementException ex)
                 {
-                    var hardwareHash = entry["DeviceHardwareData"].ToString();
-                    information.HardwareHash = hardwareHash;
-                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"Device hash [{hardwareHash.Substring(0, 5)}...] fetched" });
+                    MessageReceived(this, new MessageReceivedEventArgs { Message = $"ERROR: DeviceHardwareData - {ex.Message}(probably not running as system)" });
                 }
-            }
-            catch (ManagementException ex)
-            {
-                MessageReceived(this, new MessageReceivedEventArgs { Message = $"ERROR: DeviceHardwareData - {ex.Message}(probably not running as system)" });
             }
 
             return information;           
